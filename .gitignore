@@ -1,0 +1,19 @@
+# Visual Studio 빌드 및 캐시 디렉토리
+.vs/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+packages/
+
+# 사용자 설정 및 임시 파일
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# 컴파일된 라이브러리 및 임시 실행 파일 (전역 루트 수준)
+nuget.exe
+scratch_read.exe
+
+# scratch 파일 제외
+scratch_read.cs
