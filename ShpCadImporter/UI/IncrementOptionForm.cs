@@ -13,21 +13,21 @@ namespace ShpCadImporter.UI
         private TextBox txtStartNum;
         private TextBox txtTextHeight;
         private TextBox txtPrefix;
-        private TextBox txtPostfix;
+        private TextBox txtSuffix;
         private Button btnOK;
         private Button btnCancel;
 
         public int StartNumber { get; private set; }
         public double TextHeight { get; private set; }
         public string Prefix { get; private set; }
-        public string Postfix { get; private set; }
+        public string Suffix { get; private set; }
 
-        public IncrementOptionForm(int defaultStartNum, double defaultHeight, string defaultPrefix, string defaultPostfix)
+        public IncrementOptionForm(int defaultStartNum, double defaultHeight, string defaultPrefix, string defaultSuffix)
         {
             this.StartNumber = defaultStartNum;
             this.TextHeight = defaultHeight;
             this.Prefix = defaultPrefix;
-            this.Postfix = defaultPostfix;
+            this.Suffix = defaultSuffix;
 
             InitializeComponent();
         }
@@ -91,16 +91,16 @@ namespace ShpCadImporter.UI
             txtPrefix.Size = new Size(inputWidth, 20);
 
             // 4. 접미사
-            Label lblPostfix = new Label();
-            lblPostfix.Text = "접미사 (Postfix):";
-            lblPostfix.Location = new Point(labelX, startY + gapY * 3);
-            lblPostfix.Size = new Size(110, 20);
-            lblPostfix.TextAlign = ContentAlignment.MiddleLeft;
+            Label lblSuffix = new Label();
+            lblSuffix.Text = "접미사 (Suffix):";
+            lblSuffix.Location = new Point(labelX, startY + gapY * 3);
+            lblSuffix.Size = new Size(110, 20);
+            lblSuffix.TextAlign = ContentAlignment.MiddleLeft;
 
-            txtPostfix = new TextBox();
-            txtPostfix.Text = Postfix;
-            txtPostfix.Location = new Point(inputX, startY + gapY * 3);
-            txtPostfix.Size = new Size(inputWidth, 20);
+            txtSuffix = new TextBox();
+            txtSuffix.Text = Suffix;
+            txtSuffix.Location = new Point(inputX, startY + gapY * 3);
+            txtSuffix.Size = new Size(inputWidth, 20);
 
             // 5. 확인 버튼
             btnOK = new Button();
@@ -124,8 +124,8 @@ namespace ShpCadImporter.UI
             this.Controls.Add(txtTextHeight);
             this.Controls.Add(lblPrefix);
             this.Controls.Add(txtPrefix);
-            this.Controls.Add(lblPostfix);
-            this.Controls.Add(txtPostfix);
+            this.Controls.Add(lblSuffix);
+            this.Controls.Add(txtSuffix);
             this.Controls.Add(btnOK);
             this.Controls.Add(btnCancel);
 
@@ -185,7 +185,7 @@ namespace ShpCadImporter.UI
             }
 
             Prefix = txtPrefix.Text;
-            Postfix = txtPostfix.Text;
+            Suffix = txtSuffix.Text;
 
             this.Close();
         }

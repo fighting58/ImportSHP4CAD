@@ -17,7 +17,7 @@ namespace ShpCadImporter.Commands
         // 도면 세션 간 설정을 유지하기 위한 정적(Static) 변수 정의 (LISP의 글로벌 변수와 동일한 역할)
         private static double _incnumSize = 1.0;
         private static string _incnumPrefix = "";
-        private static string _incnumPostfix = "";
+        private static string _incnumSuffix = "";
         private static int _incnumStart = 1;
 
         [CommandMethod("INCREMENT_NUMBER")]
@@ -37,10 +37,10 @@ namespace ShpCadImporter.Commands
                 // UI 옵션 설정 창 호출
                 double size;
                 string prefix;
-                string postfix;
+                string suffix;
                 int num;
 
-                using (var form = new ShpCadImporter.UI.IncrementOptionForm(_incnumStart, _incnumSize, _incnumPrefix, _incnumPostfix))
+                using (var form = new ShpCadImporter.UI.IncrementOptionForm(_incnumStart, _incnumSize, _incnumPrefix, _incnumSuffix))
                 {
                     var result = Application.ShowModalDialog(Application.MainWindow.Handle, form);
                     if (result != System.Windows.Forms.DialogResult.OK)
@@ -52,12 +52,12 @@ namespace ShpCadImporter.Commands
                     // 설정 업데이트 및 세션 유지
                     _incnumSize = form.TextHeight;
                     _incnumPrefix = form.Prefix;
-                    _incnumPostfix = form.Postfix;
+                    _incnumSuffix = form.Suffix;
                     _incnumStart = form.StartNumber;
 
                     size = _incnumSize;
                     prefix = _incnumPrefix;
-                    postfix = _incnumPostfix;
+                    suffix = _incnumSuffix;
                     num = _incnumStart;
                 }
 
@@ -80,7 +80,7 @@ namespace ShpCadImporter.Commands
                     }
 
                     Point3d pt = ppr.Value;
-                    string txtVal = prefix + num + postfix;
+                    string txtVal = prefix + num + suffix;
 
                     // 개별 텍스트 생성을 트랜잭션 단위로 즉시 반영하여 실시간 화면 플러시 보장
                     using (Transaction tr = db.TransactionManager.StartTransaction())
