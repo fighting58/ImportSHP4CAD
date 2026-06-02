@@ -111,6 +111,7 @@
     <Compile Include="CAD\LayerManager.cs" />
     <Compile Include="CAD\CadEntityBuilder.cs" />
     <Compile Include="UI\FieldSelectionForm.cs" />
+    <Compile Include="UI\IncrementOptionForm.cs" />
   </ItemGroup>
 
   <ItemGroup>

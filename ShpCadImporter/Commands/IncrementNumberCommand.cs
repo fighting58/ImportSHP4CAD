@@ -18,6 +18,7 @@ namespace ShpCadImporter.Commands
         private static double _incnumSize = 1.0;
         private static string _incnumPrefix = "";
         private static string _incnumPostfix = "";
+        private static int _incnumStart = 1;
 
         [CommandMethod("INCREMENT_NUMBER")]
         [CommandMethod("INCNUM")]
@@ -33,87 +34,32 @@ namespace ShpCadImporter.Commands
             {
                 ed.WriteMessage("\n[증가하는 일련번호 입력 작업을 시작합니다: INCNUM]\n");
 
-                double size = _incnumSize;
-                string prefix = _incnumPrefix;
-                string postfix = _incnumPostfix;
+                // UI 옵션 설정 창 호출
+                double size;
+                string prefix;
+                string postfix;
+                int num;
 
-                // 1. 설정 다이얼로그 대체용 대화식 키워드 루프 (Size/Prefix/Postfix)
-                bool continueSettings = true;
-                while (continueSettings)
+                using (var form = new ShpCadImporter.UI.IncrementOptionForm(_incnumStart, _incnumSize, _incnumPrefix, _incnumPostfix))
                 {
-                    PromptKeywordOptions pko = new PromptKeywordOptions(
-                        string.Format("\n[설정 현황 - 크기: {0:F2}, 접두어: \"{1}\", 접미어: \"{2}\"]\n옵션을 선택하세요 [크기(Size)/접두어(Prefix)/접미어(pOstfix)] (종료하고 계속하려면 Enter): ", 
-                        size, prefix, postfix)
-                    );
-                    pko.Keywords.Add("Size", "S", "크기(Size)");
-                    pko.Keywords.Add("Prefix", "P", "접두어(Prefix)");
-                    pko.Keywords.Add("pOstfix", "O", "접미어(pOstfix)");
-                    pko.AllowNone = true;
-
-                    PromptResult pr = ed.GetKeywords(pko);
-                    if (pr.Status == PromptStatus.None || pr.Status == PromptStatus.Cancel)
+                    var result = Application.ShowModalDialog(Application.MainWindow.Handle, form);
+                    if (result != System.Windows.Forms.DialogResult.OK)
                     {
-                        break;
+                        ed.WriteMessage("\n[취소됨] 일련번호 입력이 취소되었습니다.\n");
+                        return;
                     }
 
-                    if (pr.Status == PromptStatus.OK)
-                    {
-                        string key = pr.StringResult;
-                        if (key == "Size")
-                        {
-                            PromptDoubleOptions pdo = new PromptDoubleOptions(string.Format("\n문자 높이(크기) 입력 <{0:F2}>: ", size));
-                            pdo.AllowNegative = false;
-                            pdo.AllowZero = false;
-                            
-                            PromptDoubleResult pdr = ed.GetDouble(pdo);
-                            if (pdr.Status == PromptStatus.OK)
-                            {
-                                size = pdr.Value;
-                            }
-                        }
-                        else if (key == "Prefix")
-                        {
-                            PromptStringOptions pso = new PromptStringOptions(string.Format("\n접두어 문자열 입력 (현재: \"{0}\") [Enter 입력시 변경없음]: ", prefix));
-                            pso.AllowSpaces = true;
-                            
-                            PromptResult psr = ed.GetString(pso);
-                            if (psr.Status == PromptStatus.OK)
-                            {
-                                prefix = psr.StringResult;
-                            }
-                        }
-                        else if (key == "pOstfix")
-                        {
-                            PromptStringOptions pso = new PromptStringOptions(string.Format("\n접미어 문자열 입력 (현재: \"{0}\") [Enter 입력시 변경없음]: ", postfix));
-                            pso.AllowSpaces = true;
-                            
-                            PromptResult psr = ed.GetString(pso);
-                            if (psr.Status == PromptStatus.OK)
-                            {
-                                postfix = psr.StringResult;
-                            }
-                        }
-                    }
+                    // 설정 업데이트 및 세션 유지
+                    _incnumSize = form.TextHeight;
+                    _incnumPrefix = form.Prefix;
+                    _incnumPostfix = form.Postfix;
+                    _incnumStart = form.StartNumber;
+
+                    size = _incnumSize;
+                    prefix = _incnumPrefix;
+                    postfix = _incnumPostfix;
+                    num = _incnumStart;
                 }
-
-                // 다음 실행을 위해 설정 저장
-                _incnumSize = size;
-                _incnumPrefix = prefix;
-                _incnumPostfix = postfix;
-
-                // 2. 시작 정수번호 입력 요청 (기본값: 1)
-                PromptIntegerOptions pio = new PromptIntegerOptions("\n시작할 정수번호를 입력하세요 <1>: ");
-                pio.DefaultValue = 1;
-                pio.UseDefaultValue = true;
-
-                PromptIntegerResult pir = ed.GetInteger(pio);
-                if (pir.Status != PromptStatus.OK)
-                {
-                    ed.WriteMessage("\n[취소됨] 일련번호 입력이 취소되었습니다.\n");
-                    return;
-                }
-
-                int num = pir.Value;
 
                 // 3. 대화형 지점 클릭 및 일련번호 배치 루프
                 PromptPointOptions ppo = new PromptPointOptions("\n번호를 배치할 지점을 클릭하세요 (종료하려면 Enter 또는 Esc): ");
@@ -174,6 +120,9 @@ namespace ShpCadImporter.Commands
                     doc.TransactionManager.QueueForGraphicsFlush();
                     ed.UpdateScreen();
                 }
+
+                // 다음 실행 시 바로 이어서 입력될 수 있도록 기본 시작 번호를 갱신
+                _incnumStart = num;
 
                 ed.WriteMessage("\n[완료] 일련번호 연속 배치를 안전하게 종료하였습니다.\n");
             }
