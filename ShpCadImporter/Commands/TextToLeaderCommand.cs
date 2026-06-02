@@ -71,7 +71,9 @@ namespace ShpCadImporter.Commands
                     double textWidth = 0.0;
 
                     // DBText 또는 MText 구조 해제 및 텍스트/위치 추출
-                    if (ent is DBText dbText)
+                    DBText dbText = ent as DBText;
+                    MText mText;
+                    if (dbText != null)
                     {
                         // VBA txtEnt.Rotation = 0 동작 일치
                         dbText.Rotation = 0;
@@ -104,7 +106,7 @@ namespace ShpCadImporter.Commands
                             textWidth = textContents.Length * textHeight * 0.7; // 폴백 대략 계산
                         }
                     }
-                    else if (ent is MText mText)
+                    else if ((mText = ent as MText) != null)
                     {
                         mText.Rotation = 0;
                         textContents = mText.Contents;

@@ -25,7 +25,7 @@ namespace ShpCadImporter
             // 초기화 완료 메시지
             Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager
                 .MdiActiveDocument.Editor.WriteMessage(
-                    "\n[ShpCadImporter] Plugin loaded. Type IMPORT_SHP to start.\n");
+                    "\n[ShpCadImporter] Plugin loaded. Type APPHELP to help\n");
         }
 
         public void Terminate()

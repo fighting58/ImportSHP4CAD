@@ -91,7 +91,9 @@ namespace ShpCadImporter.Commands
                         double rotation = 0;
 
                         // 문자 정보 분석
-                        if (ent is DBText dbText)
+                        DBText dbText = ent as DBText;
+                        MText mText;
+                        if (dbText != null)
                         {
                             textString = dbText.TextString;
                             rotation = dbText.Rotation;
@@ -106,7 +108,7 @@ namespace ShpCadImporter.Commands
                                 basePt = dbText.AlignmentPoint;
                             }
                         }
-                        else if (ent is MText mText)
+                        else if ((mText = ent as MText) != null)
                         {
                             textString = mText.Text; // 포맷 제어 텍스트 획득
                             rotation = mText.Rotation;

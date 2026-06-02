@@ -91,6 +91,17 @@
     <Compile Include="Commands\PolylineReorderCommand.cs" />
     <Compile Include="Commands\CurveBlockCommand.cs" />
     <Compile Include="Commands\MnumClassificationCommand.cs" />
+    <Compile Include="Commands\OuterBoundaryCommand.cs" />
+    <Compile Include="Commands\RefPolyCommand.cs" />
+    <Compile Include="Commands\AreaAdjustCommand.cs" />
+    <Compile Include="Commands\HelpCommand.cs" />
+    <Compile Include="Commands\ArcToPolylineCommand.cs" />
+    <Compile Include="Commands\CoordRoundCommand.cs" />
+    <Compile Include="Commands\VertexEditCommand.cs" />
+    <Compile Include="Commands\ParcelSplitCommand.cs" />
+    <Compile Include="Commands\IncrementNumberCommand.cs" />
+    <Compile Include="Commands\MapIndexCommand.cs" />
+    <Compile Include="Commands\ODLabelCommand.cs" />
     <Compile Include="SHP\ShpReader.cs" />
     <Compile Include="SHP\ShpFeature.cs" />
     <Compile Include="Geometry\GeometryProcessor.cs" />

@@ -68,7 +68,9 @@ namespace ShpCadImporter.Commands
                         string textLayer = ent.Layer; // 원 생성 시 동일 레이어로 일치화하기 위해 레이어명 저장
 
                         // 3. DBText 분석
-                        if (ent is DBText dbText)
+                        DBText dbText = ent as DBText;
+                        MText mText;
+                        if (dbText != null)
                         {
                             textHeight = dbText.Height;
 
@@ -85,7 +87,7 @@ namespace ShpCadImporter.Commands
                             }
                         }
                         // 4. MText 분석 (다중행 텍스트 지원 보강)
-                        else if (ent is MText mText)
+                        else if ((mText = ent as MText) != null)
                         {
                             textHeight = mText.TextHeight;
                             circleCenter = mText.Location;
