@@ -277,6 +277,9 @@ namespace ShpCadImporter.Commands
             text.AlignmentPoint = insPt; // 정렬 중심 활성화를 위한 필수 대입
             text.Rotation = rot;
             text.Layer = layerName;
+            
+            // 한글 깨짐 방지를 위해 "SHP_한글" 텍스트 스타일 적용
+            text.TextStyleId = CAD.CadEntityBuilder.GetOrCreateKoreanTextStyle(btr.Database, tr);
 
             btr.AppendEntity(text);
             tr.AddNewlyCreatedDBObject(text, true);

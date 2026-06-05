@@ -92,16 +92,8 @@ namespace ShpCadImporter.Commands
                         dbText.TextString = txtVal;
                         dbText.Height = size;
 
-                        // Standard 텍스트 스타일 획득
-                        TextStyleTable tst = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
-                        if (tst.Has("Standard"))
-                        {
-                            dbText.TextStyleId = tst["Standard"];
-                        }
-                        else
-                        {
-                            dbText.TextStyleId = db.Textstyle;
-                        }
+                        // 한글 깨짐 방지를 위해 "SHP_한글" 텍스트 스타일 적용
+                        dbText.TextStyleId = ShpCadImporter.CAD.CadEntityBuilder.GetOrCreateKoreanTextStyle(db, tr);
 
                         // 가로 1(Center), 세로 2(Middle) => MiddleCenter (중앙 정렬) 설정
                         dbText.Justify = AttachmentPoint.MiddleCenter;

@@ -59,6 +59,39 @@ namespace ShpCadImporter.CAD
         /// <param name="layerName">대상 레이어 이름</param>
         /// <param name="btr">BlockTableRecord (ModelSpace)</param>
         /// <param name="tr">현재 Transaction</param>
+        /// <summary>
+        /// 한글을 지원하는 "SHP_한글" 텍스트 스타일을 가져오거나 생성한다. (맑은 고딕 사용)
+        /// </summary>
+        public static ObjectId GetOrCreateKoreanTextStyle(Database db, Transaction tr)
+        {
+            TextStyleTable tst = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+            string styleName = "SHP_한글";
+            
+            if (tst.Has(styleName))
+            {
+                return tst[styleName];
+            }
+            
+            tst.UpgradeOpen();
+            TextStyleTableRecord tstr = new TextStyleTableRecord();
+            tstr.Name = styleName;
+            tstr.FileName = "malgun.ttf"; // Windows 맑은 고딕 TrueType 폰트 지정
+            
+            tst.Add(tstr);
+            tr.AddNewlyCreatedDBObject(tstr, true);
+            return tstr.ObjectId;
+        }
+
+        /// <summary>
+        /// DBText를 생성하여 ModelSpace에 추가한다.
+        /// MiddleCenter 정렬, Height=0.5 도면단위.
+        /// AutoCAD 2013 호환 순서: SetDatabaseDefaults → Position → Height → Mode → AlignmentPoint
+        /// </summary>
+        /// <param name="value">텍스트 값</param>
+        /// <param name="position">삽입점 {x, y}</param>
+        /// <param name="layerName">대상 레이어 이름</param>
+        /// <param name="btr">BlockTableRecord (ModelSpace)</param>
+        /// <param name="tr">현재 Transaction</param>
         public static void CreateText(string value, double[] position, string layerName,
             BlockTableRecord btr, Transaction tr)
         {
@@ -66,6 +99,9 @@ namespace ShpCadImporter.CAD
             {
                 return;
             }
+
+            Database db = btr.Database;
+            ObjectId textStyleId = GetOrCreateKoreanTextStyle(db, tr);
 
             DBText text = new DBText();
 
@@ -91,6 +127,9 @@ namespace ShpCadImporter.CAD
 
             // 7. Layer
             text.Layer = layerName;
+
+            // 8. TextStyle 지정 (한글 깨짐 차단)
+            text.TextStyleId = textStyleId;
 
             btr.AppendEntity(text);
             tr.AddNewlyCreatedDBObject(text, true);
