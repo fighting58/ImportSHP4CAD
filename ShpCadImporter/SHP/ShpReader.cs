@@ -71,8 +71,132 @@ namespace ShpCadImporter.SHP
 
         private static Encoding DetectEncoding(string shpPath)
         {
-            // 사용자의 요청에 따라 원본 shp(DBF) 파일의 인코딩을 모두 EUC-KR(Codepage 949)로 강제 적용합니다.
+            // 1. CPG 파일이 존재하면 설정 우선 처리
+            string cpgPath = Path.ChangeExtension(shpPath, ".cpg");
+            if (File.Exists(cpgPath))
+            {
+                try
+                {
+                    string cpgContent = File.ReadAllText(cpgPath).Trim();
+                    if (!string.IsNullOrEmpty(cpgContent))
+                    {
+                        string encodingName = cpgContent.ToUpperInvariant()
+                            .Replace("-", "")
+                            .Replace("_", "");
+
+                        if (encodingName == "EUCKR" || encodingName == "KSCOMPLIANT" || encodingName == "949")
+                        {
+                            return GetSafeEncoding(949);
+                        }
+                        if (encodingName == "UTF8" || encodingName == "65001")
+                        {
+                            return Encoding.UTF8;
+                        }
+                        return GetSafeEncoding(cpgContent.Trim());
+                    }
+                }
+                catch
+                {
+                    // CPG 파일 오류 시 무시하고 다음 단계로 진행
+                }
+            }
+
+            // 2. CPG 파일이 없는 경우, DBF 파일 본문의 바이트 데이터를 Heuristic하게 분석하여 UTF-8 판단
+            string dbfPath = Path.ChangeExtension(shpPath, ".dbf");
+            if (File.Exists(dbfPath))
+            {
+                try
+                {
+                    using (var fs = new FileStream(dbfPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        if (fs.Length > 32)
+                        {
+                            byte[] header = new byte[32];
+                            fs.Read(header, 0, 32);
+
+                            int numRecords = BitConverter.ToInt32(header, 4);
+                            short headerLength = BitConverter.ToInt16(header, 8);
+                            short recordLength = BitConverter.ToInt16(header, 10);
+
+                            // 최대 상위 5개의 레코드를 읽어 한글 문자가 유효한 UTF-8 형식의 멀티바이트인지 검사
+                            int sampleCount = Math.Min(5, numRecords);
+                            if (sampleCount > 0 && fs.Length >= headerLength + (sampleCount * recordLength))
+                            {
+                                byte[] sampleBuffer = new byte[sampleCount * recordLength];
+                                fs.Position = headerLength;
+                                fs.Read(sampleBuffer, 0, sampleBuffer.Length);
+
+                                if (IsUtf8Sequence(sampleBuffer))
+                                {
+                                    return Encoding.UTF8;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // 분석 실패 시 무시하고 기본 설정 위임
+                }
+            }
+
+            // 3. 디폴트 값: 한국 사용자 환경에 최적화된 EUC-KR (949) 사용
             return GetSafeEncoding(949);
+        }
+
+        /// <summary>
+        /// 바이트 시퀀스가 깨지지 않은 UTF-8 형식의 멀티바이트 문자를 포함하고 있는지 판별합니다.
+        /// </summary>
+        private static bool IsUtf8Sequence(byte[] buffer)
+        {
+            int i = 0;
+            int length = buffer.Length;
+            bool hasMultiByte = false;
+
+            while (i < length)
+            {
+                byte b = buffer[i];
+
+                if (b < 0x80)
+                {
+                    i++;
+                    continue;
+                }
+
+                // 2바이트 UTF-8 (110xxxxx 10xxxxxx)
+                if ((b & 0xE0) == 0xC0)
+                {
+                    if (i + 1 >= length || (buffer[i + 1] & 0xC0) != 0x80) return false;
+                    hasMultiByte = true;
+                    i += 2;
+                }
+                // 3바이트 UTF-8 (1110xxxx 10xxxxxx 10xxxxxx) - 한글이 3바이트를 주로 차지함
+                else if ((b & 0xF0) == 0xE0)
+                {
+                    if (i + 2 >= length || 
+                        (buffer[i + 1] & 0xC0) != 0x80 || 
+                        (buffer[i + 2] & 0xC0) != 0x80) return false;
+                    hasMultiByte = true;
+                    i += 3;
+                }
+                // 4바이트 UTF-8 (11110xxx 10xxxxxx 10xxxxxx 10xxxxxx)
+                else if ((b & 0xF8) == 0xF0)
+                {
+                    if (i + 3 >= length || 
+                        (buffer[i + 1] & 0xC0) != 0x80 || 
+                        (buffer[i + 2] & 0xC0) != 0x80 || 
+                        (buffer[i + 3] & 0xC0) != 0x80) return false;
+                    hasMultiByte = true;
+                    i += 4;
+                }
+                else
+                {
+                    // 비정상적인 UTF-8 시작 바이트 검출 시 실패
+                    return false;
+                }
+            }
+
+            return hasMultiByte;
         }
 
         /// <summary>
