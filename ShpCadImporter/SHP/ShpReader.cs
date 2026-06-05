@@ -29,46 +29,41 @@ namespace ShpCadImporter.SHP
             // 원본 shp파일의 인코딩을 euc-kr로 고정하여 읽기
             Encoding encoding = DetectEncoding(shpPath);
 
+            // 1. 직접 DBF 파일을 EUC-KR로 디코딩하여 속성 데이터 리스트 획득
+            string dbfPath = Path.ChangeExtension(shpPath, ".dbf");
+            var dbfRecords = DbfRawReader.ReadAllRecords(dbfPath, encoding);
+
             var features = new List<ShpFeature>();
 
-            // ShapefileDataReader로 SHP + DBF 동시 읽기
-            using (var reader = new ShapefileDataReader(shpPath, 
-                NetTopologySuite.Geometries.GeometryFactory.Default))
+            // 2. ShapefileReader로 지오메트리만 안전하게 순차 읽기
+            var factory = NetTopologySuite.Geometries.GeometryFactory.Default;
+            var reader = new ShapefileReader(shpPath, factory);
+            var enumerator = reader.GetEnumerator();
+            int index = 0;
+            while (enumerator.MoveNext())
             {
-                // 원본 shp파일의 인코딩을 euc-kr로 강제 설정
-                reader.DbaseHeader.Encoding = encoding;
+                var geom = (GeoAPI.Geometries.IGeometry)enumerator.Current;
+                
+                int dbfIndex = index;
+                index++; // 다음 레코드를 위해 인덱스는 무조건 증가
 
-                // DBF 헤더로부터 사용 가능한 모든 필드 이름 추출
-                DbaseFileHeader header = reader.DbaseHeader;
-                List<string> fieldNames = new List<string>();
-                for (int i = 0; i < header.NumFields; i++)
+                if (geom == null || geom.IsEmpty)
                 {
-                    fieldNames.Add(header.Fields[i].Name);
+                    continue; // 빈 기하는 무시하지만 인덱스는 밀리지 않음
                 }
 
-                while (reader.Read())
+                var feature = new ShpFeature();
+                feature.Geometry = geom;
+
+                if (dbfIndex < dbfRecords.Count)
                 {
-                    IGeometry geom = reader.Geometry;
-
-                    // Empty Geometry는 Skip (예외 처리 정책)
-                    if (geom == null || geom.IsEmpty)
+                    foreach (var kvp in dbfRecords[dbfIndex])
                     {
-                        continue;
+                        feature.Attributes[kvp.Key] = kvp.Value;
                     }
-
-                    var feature = new ShpFeature();
-                    feature.Geometry = geom;
-
-                    // 전체 속성을 동적으로 딕셔너리에 로드 (0-indexed 순차 바인딩)
-                    for (int i = 0; i < fieldNames.Count; i++)
-                    {
-                        string fieldName = fieldNames[i];
-                        string value = ReadStringField(reader, i, encoding);
-                        feature.Attributes[fieldName] = value;
-                    }
-
-                    features.Add(feature);
                 }
+
+                features.Add(feature);
             }
 
             return features;
@@ -181,53 +176,117 @@ namespace ShpCadImporter.SHP
             }
         }
 
-        /// <summary>
-        /// DbaseFileHeader에서 필드 이름으로 인덱스를 찾는다.
-        /// 대소문자 무시. 필드가 없으면 -1 반환.
-        /// </summary>
-        private static int FindFieldIndex(DbaseFileHeader header, string fieldName)
+    }
+
+    public class DbfRawField
+    {
+        public string Name { get; set; }
+        public char Type { get; set; }
+        public int Length { get; set; }
+    }
+
+    public static class DbfRawReader
+    {
+        public static List<string> ReadFieldNames(string dbfPath, Encoding encoding)
         {
-            for (int i = 0; i < header.NumFields; i++)
+            var fieldNames = new List<string>();
+            if (!File.Exists(dbfPath)) return fieldNames;
+
+            using (var fs = new FileStream(dbfPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var br = new BinaryReader(fs))
             {
-                if (string.Equals(header.Fields[i].Name, fieldName,
-                    StringComparison.OrdinalIgnoreCase))
+                if (fs.Length < 32) return fieldNames;
+
+                br.ReadByte(); // version
+                br.ReadBytes(3); // date
+                br.ReadInt32(); // numRecords
+                short headerLength = br.ReadInt16();
+                br.ReadInt16(); // recordLength
+
+                while (fs.Position < headerLength - 1)
                 {
-                    return i;
+                    byte nextByte = br.ReadByte();
+                    if (nextByte == 0x0D) break;
+
+                    byte[] nameBytes = new byte[11];
+                    nameBytes[0] = nextByte;
+                    br.Read(nameBytes, 1, 10);
+
+                    string fieldName = encoding.GetString(nameBytes).Trim('\0', ' ');
+                    fieldNames.Add(fieldName);
+
+                    br.ReadByte(); // type
+                    br.ReadBytes(4); // address
+                    br.ReadByte(); // len
+                    br.ReadByte(); // decimal
+                    br.ReadBytes(14); // reserved
                 }
             }
-            return -1;
+            return fieldNames;
         }
 
-        /// <summary>
-        /// DBF 레코드에서 문자열 필드를 읽는다.
-        /// 필드가 없거나 값이 null이면 빈 문자열을 반환한다.
-        /// EUC-KR 인코딩 시 바이트 배열에서 직접 디코딩한다.
-        /// </summary>
-        private static string ReadStringField(ShapefileDataReader reader, 
-            int fieldIndex, Encoding encoding)
+        public static List<Dictionary<string, string>> ReadAllRecords(string dbfPath, Encoding encoding)
         {
-            // 필드 인덱스가 유효하지 않으면 빈 문자열
-            if (fieldIndex < 0 || fieldIndex >= reader.FieldCount)
-            {
-                return string.Empty;
-            }
+            var records = new List<Dictionary<string, string>>();
+            if (!File.Exists(dbfPath)) return records;
 
-            try
+            using (var fs = new FileStream(dbfPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var br = new BinaryReader(fs))
             {
-                object value = reader.GetValue(fieldIndex);
+                if (fs.Length < 32) return records;
 
-                if (value == null || value is DBNull)
+                br.ReadByte(); // version
+                br.ReadBytes(3); // date
+                int numRecords = br.ReadInt32();
+                short headerLength = br.ReadInt16();
+                short recordLength = br.ReadInt16();
+
+                var fields = new List<DbfRawField>();
+                while (fs.Position < headerLength - 1)
                 {
-                    return string.Empty;
+                    byte nextByte = br.ReadByte();
+                    if (nextByte == 0x0D) break;
+
+                    byte[] nameBytes = new byte[11];
+                    nameBytes[0] = nextByte;
+                    br.Read(nameBytes, 1, 10);
+
+                    string fieldName = encoding.GetString(nameBytes).Trim('\0', ' ');
+
+                    char fieldType = (char)br.ReadByte();
+                    br.ReadBytes(4); // address
+                    byte fieldLen = br.ReadByte();
+                    br.ReadByte(); // decimal
+                    br.ReadBytes(14); // reserved
+
+                    fields.Add(new DbfRawField
+                    {
+                        Name = fieldName,
+                        Type = fieldType,
+                        Length = fieldLen
+                    });
                 }
 
-                string result = value.ToString().Trim();
-                return result;
+                fs.Position = headerLength;
+
+                for (int r = 0; r < numRecords; r++)
+                {
+                    if (fs.Position + recordLength > fs.Length) break;
+
+                    br.ReadByte(); // delete flag
+                    var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var field in fields)
+                    {
+                        byte[] buffer = br.ReadBytes(field.Length);
+                        string value = encoding.GetString(buffer).Trim();
+                        value = value.Replace("\0", "").Trim();
+                        row[field.Name] = value;
+                    }
+                    records.Add(row);
+                }
             }
-            catch
-            {
-                return string.Empty;
-            }
+            return records;
         }
     }
 }
