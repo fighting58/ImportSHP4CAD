@@ -155,8 +155,13 @@ namespace ShpCadImporter.Commands
             List<string> fields = new List<string>();
             try
             {
+                // 원본 shp파일의 인코딩을 EUC-KR(949)로 고정하여 DBF 필드 정보를 읽습니다.
+                var encoding = System.Text.Encoding.GetEncoding(949);
                 using (var reader = new ShapefileDataReader(shpPath, NetTopologySuite.Geometries.GeometryFactory.Default))
                 {
+                    // 원본 shp파일의 인코딩을 euc-kr로 강제 설정
+                    reader.DbaseHeader.Encoding = encoding;
+
                     DbaseFileHeader header = reader.DbaseHeader;
                     for (int i = 0; i < header.NumFields; i++)
                     {

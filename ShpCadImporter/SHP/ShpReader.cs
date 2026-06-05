@@ -26,7 +26,7 @@ namespace ShpCadImporter.SHP
                 throw new FileNotFoundException("SHP file not found: " + shpPath);
             }
 
-            // CPG 파일에서 인코딩 감지
+            // 원본 shp파일의 인코딩을 euc-kr로 고정하여 읽기
             Encoding encoding = DetectEncoding(shpPath);
 
             var features = new List<ShpFeature>();
@@ -35,6 +35,9 @@ namespace ShpCadImporter.SHP
             using (var reader = new ShapefileDataReader(shpPath, 
                 NetTopologySuite.Geometries.GeometryFactory.Default))
             {
+                // 원본 shp파일의 인코딩을 euc-kr로 강제 설정
+                reader.DbaseHeader.Encoding = encoding;
+
                 // DBF 헤더로부터 사용 가능한 모든 필드 이름 추출
                 DbaseFileHeader header = reader.DbaseHeader;
                 List<string> fieldNames = new List<string>();
@@ -71,42 +74,10 @@ namespace ShpCadImporter.SHP
             return features;
         }
 
-        /// <summary>
-        /// CPG 파일에서 인코딩을 감지한다.
-        /// CPG가 없으면 UTF-8을 기본으로 사용한다.
-        /// </summary>
         private static Encoding DetectEncoding(string shpPath)
         {
-            string cpgPath = Path.ChangeExtension(shpPath, ".cpg");
-
-            if (File.Exists(cpgPath))
-            {
-                string cpgContent = File.ReadAllText(cpgPath).Trim();
-
-                if (!string.IsNullOrEmpty(cpgContent))
-                {
-                    // EUC-KR, UTF-8 등의 인코딩 이름 처리
-                    string encodingName = cpgContent.ToUpperInvariant()
-                        .Replace("-", "")
-                        .Replace("_", "");
-
-                    if (encodingName == "EUCKR" || encodingName == "KSCOMPLIANT")
-                    {
-                        return GetSafeEncoding(949); // EUC-KR = codepage 949
-                    }
-
-                    try
-                    {
-                        return GetSafeEncoding(cpgContent.Trim());
-                    }
-                    catch
-                    {
-                        // 인코딩 이름 파싱 실패 시 UTF-8 사용
-                    }
-                }
-            }
-
-            return Encoding.UTF8;
+            // 사용자의 요청에 따라 원본 shp(DBF) 파일의 인코딩을 모두 EUC-KR(Codepage 949)로 강제 적용합니다.
+            return GetSafeEncoding(949);
         }
 
         /// <summary>
