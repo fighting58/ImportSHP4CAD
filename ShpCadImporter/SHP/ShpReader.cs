@@ -202,6 +202,7 @@ namespace ShpCadImporter.SHP
                 br.ReadInt32(); // numRecords
                 short headerLength = br.ReadInt16();
                 br.ReadInt16(); // recordLength
+                br.ReadBytes(20); // skip remaining 20 bytes of 32-byte header
 
                 while (fs.Position < headerLength - 1)
                 {
@@ -240,6 +241,7 @@ namespace ShpCadImporter.SHP
                 int numRecords = br.ReadInt32();
                 short headerLength = br.ReadInt16();
                 short recordLength = br.ReadInt16();
+                br.ReadBytes(20); // skip remaining 20 bytes of 32-byte header
 
                 var fields = new List<DbfRawField>();
                 while (fs.Position < headerLength - 1)
